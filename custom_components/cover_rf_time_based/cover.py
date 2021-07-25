@@ -36,9 +36,7 @@ CONF_SEND_STOP_AT_ENDS = 'send_stop_at_ends'
 DEFAULT_TRAVEL_TIME = 25
 DEFAULT_SEND_STOP_AT_ENDS = False
 
-CONF_OPEN_SCRIPT_ENTITY_ID = 'open_script_entity_id'
-CONF_CLOSE_SCRIPT_ENTITY_ID = 'close_script_entity_id'
-CONF_STOP_SCRIPT_ENTITY_ID = 'stop_script_entity_id'
+CONF_TARGET_ENTITY_ID = 'target_entity_id'
 ATTR_CONFIDENT = 'confident'
 ATTR_POSITION = 'position'
 ATTR_ACTION = 'action'
@@ -55,9 +53,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
             {
                 cv.string: {
                     vol.Required(CONF_NAME): cv.string,
-                    vol.Required(CONF_OPEN_SCRIPT_ENTITY_ID): cv.entity_id,
-                    vol.Required(CONF_CLOSE_SCRIPT_ENTITY_ID): cv.entity_id,
-                    vol.Required(CONF_STOP_SCRIPT_ENTITY_ID): cv.entity_id,
+                    vol.Required(CONF_TARGET_ENTITY_ID): cv.entity_id,
                     vol.Optional(CONF_ALIASES, default=[]): vol.All(cv.ensure_list, [cv.string]),
                     vol.Optional(CONF_TRAVELLING_TIME_DOWN, default=DEFAULT_TRAVEL_TIME): cv.positive_int,
                     vol.Optional(CONF_TRAVELLING_TIME_UP, default=DEFAULT_TRAVEL_TIME): cv.positive_int,
@@ -95,11 +91,9 @@ def devices_from_config(domain_config):
         name = config.pop(CONF_NAME)
         travel_time_down = config.pop(CONF_TRAVELLING_TIME_DOWN)
         travel_time_up = config.pop(CONF_TRAVELLING_TIME_UP)
-        open_script_entity_id = config.pop(CONF_OPEN_SCRIPT_ENTITY_ID)
-        close_script_entity_id = config.pop(CONF_CLOSE_SCRIPT_ENTITY_ID)
-        stop_script_entity_id = config.pop(CONF_STOP_SCRIPT_ENTITY_ID)
+        target_entity_id = config.pop(CONF_TARGET_ENTITY_ID)
         send_stop_at_ends = config.pop(CONF_SEND_STOP_AT_ENDS)
-        device = CoverTimeBased(device_id, name, travel_time_down, travel_time_up, open_script_entity_id, close_script_entity_id, stop_script_entity_id, send_stop_at_ends)
+        device = CoverTimeBased(device_id, name, travel_time_down, travel_time_up, send_stop_at_ends, target_entity_id)
         devices.append(device)
     return devices
 
@@ -121,14 +115,12 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 
 class CoverTimeBased(CoverEntity, RestoreEntity):
-    def __init__(self, device_id, name, travel_time_down, travel_time_up, open_script_entity_id, close_script_entity_id, stop_script_entity_id, send_stop_at_ends):
+    def __init__(self, device_id, name, travel_time_down, travel_time_up, send_stop_at_ends, target_entity_id):
         """Initialize the cover."""
         from xknx.devices import TravelCalculator
         self._travel_time_down = travel_time_down
         self._travel_time_up = travel_time_up
-        self._open_script_entity_id = open_script_entity_id
-        self._close_script_entity_id = close_script_entity_id 
-        self._stop_script_entity_id = stop_script_entity_id
+        self._target_entity_id = target_entity_id
         self._send_stop_at_ends = send_stop_at_ends
         self._assume_uncertain_position = True 
         self._target_position = 0
@@ -363,17 +355,17 @@ class CoverTimeBased(CoverEntity, RestoreEntity):
         if command == "close_cover":
             cmd = "DOWN"
             self._state = False
-            await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": self._close_script_entity_id}, False)
+            await self.hass.services.async_call("cover", "close_cover", {"entity_id": self._target_entity_id}, False)
 
         elif command == "open_cover":
             cmd = "UP"
             self._state = True
-            await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": self._open_script_entity_id}, False)
+            await self.hass.services.async_call("cover", "open_cover", {"entity_id": self._target_entity_id}, False)
 
         elif command == "stop_cover":
             cmd = "STOP"
             self._state = True
-            await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": self._stop_script_entity_id}, False)
+            await self.hass.services.async_call("cover", "stop_cover", {"entity_id": self._target_entity_id}, False)
 
         _LOGGER.debug(self._name + ': ' + '_async_handle_command :: %s', cmd)
 
