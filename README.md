@@ -29,9 +29,7 @@ cover:
         name: My Room Cover
         travelling_time_up: 36
         travelling_time_down: 34
-        close_script_entity_id: script.rf_myroom_cover_down
-        stop_script_entity_id: script.rf_myroom_cover_stop
-        open_script_entity_id: script.rf_myroom_cover_up
+        target_entity_id: cover.your_real_cover
         send_stop_at_ends: False #optional
         aliases: #optional
           - my_room_cover_time_based
